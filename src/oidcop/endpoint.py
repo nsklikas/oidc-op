@@ -332,9 +332,7 @@ class Endpoint(object):
         _response_placement = None
         if response_args is None:
             response_args = {}
-
-        LOGGER.debug("do_response kwargs: %s", kwargs)
-
+        LOGGER.debug(f"do_response kwargs: {kwargs}")
         resp = None
         if error:
             _response = ResponseMessage(error=error)

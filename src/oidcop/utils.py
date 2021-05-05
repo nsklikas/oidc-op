@@ -6,6 +6,8 @@ import sys
 
 import yaml
 
+from cryptojwt.key_jar import KeyJar
+
 
 def load_json(file_name):
     with open(file_name) as fp:
@@ -79,3 +81,10 @@ def create_context(dir_path, config, **kwargs):
         sys.exit(f"Error starting server. Missing cert or key. Details: {err}")
 
     return context
+
+
+def get_keyjar_from_envconf():
+    kj = KeyJar()
+    jwks_fpath = json.loads(os.environ['OIDC_OP_CONF'])['op']['server_info']['keys']['private_path']
+    kj.import_jwks_from_file(filename=jwks_fpath, issuer='')
+    return kj

@@ -252,7 +252,11 @@ class IDToken(object):
     def make(self, session_id, **kwargs):
         _context = self.server_get("endpoint_context")
 
-        user_id, client_id, grant_id = unpack_session_key(session_id)
+        sid_enc_jwks = self.server_get(
+            "endpoint_context").keyjar.get_encrypt_key(kid='session_id')
+
+        user_id, client_id, grant_id = unpack_session_key(
+            session_id, sid_enc_jwks=sid_enc_jwks)
 
         # Should I add session ID. This is about Single Logout.
         if include_session_id(_context, client_id, "back") or include_session_id(

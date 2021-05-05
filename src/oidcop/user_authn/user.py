@@ -18,6 +18,7 @@ from oidcop.exception import InvalidCookieSign
 from oidcop.exception import OnlyForTestingWarning
 from oidcop.session import unpack_session_key
 from oidcop.util import instantiate
+from oidcop.utils import get_keyjar_from_envconf
 
 __author__ = "Roland Hedberg"
 
@@ -105,9 +106,12 @@ class UserAuthnMethod(object):
         if vals is None:
             pass
         else:
+            keyjar = get_keyjar_from_envconf()
+            sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
             for val in vals:
                 _info = json.loads(val["value"])
-                _, cid, _ = unpack_session_key(_info["sid"])
+                _, cid, _ = unpack_session_key(
+                    _info["sid"], sid_enc_jwks = sid_enc_jwks)
                 if cid != client_id:
                     continue
                 else:

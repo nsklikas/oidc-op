@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 
 from django.conf import settings
 from oidcop.endpoint_context import EndpointContext
@@ -13,16 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 def init_oidc_op_endpoints(app):
-    _config = app.srv_config.op
-    _server_info_config = _config['server_info']
+    op_config = app.srv_config.op
 
-    iss = _server_info_config['issuer']
+    iss = op_config['issuer']
     if '{domain}' in iss:
         iss = iss.format(domain=app.srv_config.domain,
                          port=app.srv_config.port)
-        _server_info_config['issuer'] = iss
+        op_config['issuer'] = iss
 
-    server = Server(_server_info_config, cwd=folder)
+    server = Server(op_config, cwd=folder)
 
     for endp in server.endpoint.values():
         p = urlparse(endp.endpoint_path)
@@ -46,4 +46,6 @@ def oidc_provider_init_app(config, name='oidc_op', **kwargs):
 def oidcop_application(conf = settings.OIDCOP_CONF):
     config = Configuration(conf = conf)
     app = oidc_provider_init_app(config)
+    os.environ['OIDC_OP_CONF'] = json.dumps(settings.OIDCOP_CONF)
     return app
+

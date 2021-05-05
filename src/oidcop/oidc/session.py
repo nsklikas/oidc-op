@@ -165,16 +165,19 @@ class Session(Endpoint):
         bc_logouts = {}
         fc_iframes = {}
         _rel_sid = []
+
+        sid_enc_jwks = _context.keyjar.get_encrypt_key(kid='session_id')
+
         for _client_id in _session_info["user_session_info"].subordinate:
+            _sid = session_key(_user_id, _client_id,
+                               sid_enc_jwks = sid_enc_jwks)
             if "backchannel_logout_uri" in _cdb[_client_id]:
-                _sid = session_key(_user_id, _client_id)
                 _rel_sid.append(_sid)
                 _spec = self.do_back_channel_logout(_cdb[_client_id], _sid)
                 if _spec:
                     bc_logouts[_client_id] = _spec
             elif "frontchannel_logout_uri" in _cdb[_client_id]:
                 # Construct an IFrame
-                _sid = session_key(_user_id, _client_id)
                 _rel_sid.append(_sid)
                 _spec = do_front_channel_logout_iframe(
                     _cdb[_client_id], _iss, _sid)

@@ -20,6 +20,7 @@ from .info import ClientSessionInfo
 from .info import UserSessionInfo
 from ..token import UnknownToken
 from ..token.handler import TokenHandler
+from ..utils import get_keyjar_from_envconf
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,11 @@ class SessionManager(Database):
         :param token_value:
         :return:
         """
-        user_id, client_id, grant_id = unpack_session_key(session_id)
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+
+        user_id, client_id, grant_id = unpack_session_key(
+            session_id, sid_enc_jwks=sid_enc_jwks)
         grant = self.get([user_id, client_id, grant_id])
         for token in grant.issued_token:
             if token.value == token_value:
@@ -156,7 +161,11 @@ class SessionManager(Database):
 
         self.set([user_id, client_id, grant.id], grant)
 
-        return session_key(user_id, client_id, grant.id)
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+
+        return session_key(
+            user_id, client_id, grant.id, sid_enc_jwks = sid_enc_jwks)
 
     def create_session(self,
                        authn_event: AuthnEvent,
@@ -207,10 +216,19 @@ class SessionManager(Database):
         )
 
     def __getitem__(self, session_id: str):
-        return self.get(unpack_session_key(session_id))
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+        return self.get(unpack_session_key(
+            session_id, sid_enc_jwks=sid_enc_jwks)
+        )
 
     def __setitem__(self, session_id: str, value):
-        return self.set(unpack_session_key(session_id), value)
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+        return self.set(unpack_session_key(
+            session_id, sid_enc_jwks=sid_enc_jwks),
+            value
+        )
 
     def get_client_session_info(self, session_id: str) -> ClientSessionInfo:
         """
@@ -219,7 +237,10 @@ class SessionManager(Database):
         :param session_id: Session identifier
         :return: ClientSessionInfo instance
         """
-        _user_id, _client_id, _grant_id = unpack_session_key(session_id)
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+        _user_id, _client_id, _grant_id = unpack_session_key(
+            session_id, sid_enc_jwks = sid_enc_jwks)
         csi = self.get([_user_id, _client_id])
         if isinstance(csi, ClientSessionInfo):
             return csi
@@ -233,7 +254,10 @@ class SessionManager(Database):
         :param session_id: Session identifier
         :return: ClientSessionInfo instance
         """
-        _user_id, _client_id, _grant_id = unpack_session_key(session_id)
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+        _user_id, _client_id, _grant_id = unpack_session_key(
+            session_id, sid_enc_jwks = sid_enc_jwks)
         usi = self.get([_user_id])
         if isinstance(usi, UserSessionInfo):
             return usi
@@ -247,7 +271,10 @@ class SessionManager(Database):
         :param session_id: Session identifier
         :return: ClientSessionInfo instance
         """
-        _user_id, _client_id, _grant_id = unpack_session_key(session_id)
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+        _user_id, _client_id, _grant_id = unpack_session_key(
+            session_id, sid_enc_jwks = sid_enc_jwks)
         grant = self.get([_user_id, _client_id, _grant_id])
         if isinstance(grant, Grant):
             return grant
@@ -288,7 +315,10 @@ class SessionManager(Database):
         :return: None if no authentication event could be found or an AuthnEvent instance.
         """
         if session_id:
-            user_id, client_id, _ = unpack_session_key(session_id)
+            keyjar = get_keyjar_from_envconf()
+            sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+            _user_id, _client_id, _grant_id = unpack_session_key(
+                session_id, sid_enc_jwks = sid_enc_jwks)
         elif user_id and client_id:
             pass
         else:
@@ -318,7 +348,10 @@ class SessionManager(Database):
 
         :param session_id: Session identifier
         """
-        parts = unpack_session_key(session_id)
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+        parts = unpack_session_key(
+            session_id, sid_enc_jwks = sid_enc_jwks)
         if len(parts) == 2:
             _user_id, _client_id = parts
         elif len(parts) == 3:
@@ -335,7 +368,10 @@ class SessionManager(Database):
 
         :param session_id: A session identifier
         """
-        _path = unpack_session_key(session_id)
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+        _path = unpack_session_key(
+            session_id, sid_enc_jwks = sid_enc_jwks)
         _info = self.get(_path)
         _info.revoke()
         self.set(_path, _info)
@@ -351,7 +387,10 @@ class SessionManager(Database):
         :return: A list of grants
         """
         if session_id:
-            user_id, client_id, _ = unpack_session_key(session_id)
+            keyjar = get_keyjar_from_envconf()
+            sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+            _user_id, _client_id, _grant_id = unpack_session_key(
+                session_id, sid_enc_jwks = sid_enc_jwks)
         elif user_id and client_id:
             pass
         else:
@@ -380,7 +419,10 @@ class SessionManager(Database):
         :param authorization_request: Whether the authorization_request should part of the response
         :return: A dictionary with session information
         """
-        _user_id, _client_id, _grant_id = unpack_session_key(session_id)
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+        _user_id, _client_id, _grant_id = unpack_session_key(
+            session_id, sid_enc_jwks = sid_enc_jwks)
         _grant = None
         res = {
             "session_id": session_id,

@@ -449,7 +449,6 @@ class Registration(Endpoint):
         args = dict(
             [(k, v) for k, v in _cinfo.items() if k in self.response_cls.c_param]
         )
-
         comb_uri(args)
         response = self.response_cls(**args)
 

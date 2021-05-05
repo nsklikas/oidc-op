@@ -345,8 +345,12 @@ class Authorization(Endpoint):
         if _exp_in:
             token.expires_at = utc_time_sans_frac() + _exp_in
 
+        sid_enc_jwks = self.server_get(
+            "endpoint_context").keyjar.get_encrypt_key(kid='session_id')
+
         self.server_get("endpoint_context").session_manager.set(
-            unpack_session_key(session_id), grant
+            unpack_session_key(session_id, sid_enc_jwks=sid_enc_jwks),
+            grant
         )
 
         return token
@@ -609,8 +613,12 @@ class Authorization(Endpoint):
                 if "sid" in identity:
                     _session_id = identity["sid"]
 
+                    sid_enc_jwks = self.server_get(
+                        "endpoint_context").keyjar.get_encrypt_key(kid='session_id')
+
                     # make sure the client is the same
-                    _uid, _cid, _gid = unpack_session_key(_session_id)
+                    _uid, _cid, _gid = unpack_session_key(
+                        session_id, sid_enc_jwks=sid_enc_jwks)
                     if request["client_id"] != _cid:
                         return {"function": authn, "args": authn_args}
 
@@ -812,7 +820,11 @@ class Authorization(Endpoint):
         if grant.is_active() is False:
             return self.error_response(response_info, "server_error", "Grant not usable")
 
-        user_id, client_id, grant_id = unpack_session_key(session_id)
+        sid_enc_jwks = self.server_get(
+            "endpoint_context").keyjar.get_encrypt_key(kid='session_id')
+
+        user_id, client_id, grant_id = unpack_session_key(
+            session_id, sid_enc_jwks=sid_enc_jwks)
         try:
             _mngr.set([user_id, client_id, grant_id], grant)
         except Exception as err:

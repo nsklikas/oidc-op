@@ -1,4 +1,5 @@
 """Configuration management for IDP"""
+import copy
 import importlib
 import json
 import logging
@@ -167,6 +168,8 @@ class Configuration(Base):
                  port: Optional[int] = 0
                  ):
         Base.__init__(self, conf, base_path, file_attributes)
+
+        conf = copy.deepcopy(conf)
 
         log_conf = conf.get('logging')
         if log_conf:

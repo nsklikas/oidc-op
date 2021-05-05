@@ -448,11 +448,16 @@ class Token(Endpoint):
         _session_info = _context.session_manager.get_session_info_by_token(
             _access_token, grant=True)
 
+        sid_enc_jwks = self.server_get(
+            "endpoint_context").keyjar.get_encrypt_key(kid='session_id')
+
         _cookie = _context.new_cookie(
             name=_context.cookie_handler.name["session"],
             sub=_session_info["grant"].sub,
             sid=session_key(_session_info['user_id'], _session_info['user_id'],
-                            _session_info['grant'].id))
+                            _session_info['grant'].id,
+                            sid_enc_jwks = sid_enc_jwks),
+            )
 
         _headers = [("Content-type", "application/json")]
         resp = {"response_args": response_args, "http_headers": _headers}

@@ -80,7 +80,11 @@ class ClaimsInterface:
         else:
             return {}
 
-        user_id, client_id, grant_id = unpack_session_key(session_id)
+        sid_enc_jwks = self.server_get(
+            "endpoint_context").keyjar.get_encrypt_key(kid='session_id')
+
+        user_id, client_id, grant_id = unpack_session_key(
+            session_id, sid_enc_jwks=sid_enc_jwks)
 
         # Can there be per client specification of which claims to use.
         if module.kwargs.get("enable_claims_per_client"):

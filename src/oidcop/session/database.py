@@ -10,6 +10,7 @@ from .grant import Grant
 from .info import ClientSessionInfo
 from .info import SessionInfo
 from .info import UserSessionInfo
+from .. utils import get_keyjar_from_envconf
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +53,14 @@ class Database(ImpExp):
 
         uid, client_id, grant_id = self._eval_path(path)
 
+
+
         if grant_id:
-            gid_key = session_key(uid, client_id, grant_id)
+            keyjar = get_keyjar_from_envconf()
+            sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+
+            gid_key = session_key(uid, client_id, grant_id,
+                                  sid_enc_jwks = sid_enc_jwks)
             self.db[gid_key] = value
 
         if client_id:
@@ -88,8 +95,13 @@ class Database(ImpExp):
             if client_id not in user_info.subordinate:
                 raise ValueError('No session from that client for that user')
             else:
+                keyjar = get_keyjar_from_envconf()
+                sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+
                 try:
-                    client_session_info = self.db[session_key(uid, client_id)]
+                    session_id = session_key(uid, client_id,
+                                             sid_enc_jwks = sid_enc_jwks)
+                    client_session_info = self.db[session_id]
                 except KeyError:
                     raise NoSuchClientSession(client_id)
                 else:
@@ -101,11 +113,17 @@ class Database(ImpExp):
                             'No such grant for that user and client')
                     else:
                         try:
-                            return self.db[session_key(uid, client_id, grant_id)]
+                            return self.db[
+                                session_key(uid, client_id, grant_id,
+                                            sid_enc_jwks = sid_enc_jwks)
+                            ]
                         except KeyError:
                             raise NoSuchGrant(grant_id)
 
     def delete(self, path: List[str]):
+        keyjar = get_keyjar_from_envconf()
+        sid_enc_jwks = keyjar.get_encrypt_key(kid='session_id')
+
         uid, client_id, grant_id = self._eval_path(path)
         try:
             _user_info = self.db[uid]
@@ -115,7 +133,10 @@ class Database(ImpExp):
             if client_id:
                 if client_id in _user_info.subordinate:
                     try:
-                        _client_info = self.db[session_key(uid, client_id)]
+                        _client_info = self.db[
+                            session_key(uid, client_id,
+                                        sid_enc_jwks = sid_enc_jwks)
+                        ]
                     except KeyError:
                         pass
                     else:
@@ -123,18 +144,29 @@ class Database(ImpExp):
                             if grant_id in _client_info.subordinate:
                                 try:
                                     self.db.__delitem__(
-                                        session_key(uid, client_id, grant_id))
+                                        session_key(
+                                            uid, client_id, grant_id,
+                                            sid_enc_jwks = sid_enc_jwks
+                                        )
+                                    )
                                 except KeyError:
                                     pass
                                 _client_info.subordinate.remove(grant_id)
                         else:
                             for grant_id in _client_info.subordinate:
                                 self.db.__delitem__(
-                                    session_key(uid, client_id, grant_id))
+                                    session_key(
+                                        uid, client_id, grant_id,
+                                        sid_enc_jwks = sid_enc_jwks
+                                    )
+                                )
                             _client_info.subordinate = []
 
                         if len(_client_info.subordinate) == 0:
-                            self.db.__delitem__(session_key(uid, client_id))
+                            self.db.__delitem__(
+                                session_key(uid, client_id,
+                                            sid_enc_jwks = sid_enc_jwks)
+                            )
                             _user_info.subordinate.remove(client_id)
                         else:
                             self.db[client_id] = _client_info
