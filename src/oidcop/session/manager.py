@@ -433,6 +433,8 @@ class SessionManager(Database):
             authorization_request: bool = False,
     ) -> dict:
         _token_info = self.token_handler.info(token_value)
+        if not _token_info:
+            raise KeyError
         return self.get_session_info(
             _token_info["sid"],
             user_session_info=user_session_info,

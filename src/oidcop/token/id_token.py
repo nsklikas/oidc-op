@@ -301,6 +301,8 @@ class IDToken(Token):
         _context = self.server_get("endpoint_context")
 
         _jwt = factory(token)
+        if not _jwt:
+            raise UnknownToken()
         _payload = _jwt.jwt.payload()
         client_info = _context.cdb[_payload["aud"][0]]
         alg_dict = get_sign_and_encrypt_algorithms(
