@@ -93,10 +93,9 @@ def full_path(local_file):
     return os.path.join(BASEDIR, local_file)
 
 
-@pytest.mark.parametrize("jwt_token", [True, False])
 class TestEndpoint:
     @pytest.fixture(autouse=True)
-    def create_endpoint(self, jwt_token):
+    def create_endpoint(self):
         conf = {
             "issuer": "https://example.com/",
             "password": "mycket hemligt",
@@ -192,11 +191,6 @@ class TestEndpoint:
                 },
             },
         }
-        if jwt_token:
-            conf["token_handler_args"]["token"] = {
-                "class": "oidcop.token.jwt_token.JWTToken",
-                "kwargs": {},
-            }
         server = Server(conf)
         endpoint_context = server.endpoint_context
         endpoint_context.cdb["client_1"] = {
@@ -378,6 +372,19 @@ class TestEndpoint:
         assert "sub" in _resp_args
         assert _resp_args["active"]
         assert _resp_args["scope"] == "openid"
+
+    def test_random_token(self):
+        _context = self.introspection_endpoint.server_get("endpoint_context")
+        _req = self.introspection_endpoint.parse_request(
+            {
+                "token": "invalid_token",
+                "client_id": "client_1",
+                "client_secret": _context.cdb["client_1"]["client_secret"],
+            }
+        )
+        _resp = self.introspection_endpoint.process_request(_req)
+        _resp_args = _resp["response_args"]
+        assert _resp_args["active"] is False
 
     def test_code(self):
         session_id = self._create_session(AUTH_REQ)
